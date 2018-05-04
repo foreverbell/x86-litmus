@@ -1,0 +1,6 @@
+[package]
+name = "x86-litmus"
+version = "0.1.0"
+authors = ["foreverbell <dql.foreverbell@gmail.com>"]
+
+[dependencies]
