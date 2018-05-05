@@ -1,13 +1,14 @@
 use ast::{Value, Proc, MemLoc, Reg};
 use std::collections::BTreeMap;
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub struct ProcState {
   pub regs: BTreeMap<Reg, Value>,
+  pub ip: Option<usize>,  // None if program is terminated.
   pub storebuf: BTreeMap<MemLoc, Value>,
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub struct State {
   pub procs: BTreeMap<Proc, ProcState>,
   pub mem: BTreeMap<MemLoc, Value>,
@@ -23,13 +24,20 @@ pub struct Terminal {
   pub mem: BTreeMap<MemLoc, Value>,
 }
 
+pub enum TerminalPred {
+  Reg(Proc, Reg, Value),
+  MemLoc(MemLoc, Value),
+  Not(Box<TerminalPred>),
+  And(Vec<TerminalPred>),
+}
+
 impl ProcState {
   pub fn is_final(&self) -> bool {
-    self.storebuf.is_empty()
+    self.storebuf.is_empty() && self.ip.is_none()
   }
 
   pub fn finalize(&self) -> Option<ProcTerminal> {
-    if !self.storebuf.is_empty() {
+    if !self.is_final() {
       return None;
     }
     Some(ProcTerminal { regs: self.regs.clone() })
@@ -57,13 +65,13 @@ impl State {
   }
 
   pub fn finalize(&self) -> Option<Terminal> {
-    if self.lock_owner.is_some() {
+    if !self.is_final() {
       return None;
     }
 
     let mut procs: BTreeMap<Proc, ProcTerminal> = BTreeMap::new();
     for (processor, state) in &self.procs {
-      procs.insert(*processor, state.finalize()?).unwrap();
+      procs.insert(*processor, state.finalize().unwrap()).unwrap();
     }
     Some(Terminal {
       procs: procs,
