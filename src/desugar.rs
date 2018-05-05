@@ -1,7 +1,7 @@
 use ast::Proc;
 use ast::{SurfaceInstr, CoreInstr};
 use ast::{SurfaceProg, CoreProg};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::vec::Vec;
 
 fn desugar_helper(instrs: &Vec<SurfaceInstr>) -> Vec<CoreInstr> {
@@ -27,7 +27,7 @@ fn desugar_helper(instrs: &Vec<SurfaceInstr>) -> Vec<CoreInstr> {
 }
 
 pub fn desugar(prog: &SurfaceProg) -> CoreProg {
-  let mut desugared: HashMap<Proc, Vec<CoreInstr>> = HashMap::new();
+  let mut desugared: BTreeMap<Proc, Vec<CoreInstr>> = BTreeMap::new();
 
   for (processor, instrs) in &prog.0 {
     desugared.insert(*processor, desugar_helper(instrs)).unwrap();
