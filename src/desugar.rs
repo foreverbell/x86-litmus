@@ -1,24 +1,36 @@
+use ast::Proc;
 use ast::{SurfaceInstr, CoreInstr};
+use ast::{SurfaceProg, CoreProg};
+use std::collections::HashMap;
 use std::vec::Vec;
 
-fn desugar(in_instrs: &Vec<SurfaceInstr>) -> Vec<CoreInstr> {
-  let mut out_instrs = vec![];
+fn desugar_helper(instrs: &Vec<SurfaceInstr>) -> Vec<CoreInstr> {
+  let mut desugared = vec![];
 
-  for instr in in_instrs.into_iter() {
+  for instr in instrs.into_iter() {
     match *instr {
       SurfaceInstr::MOV(dst, src) => {
-        out_instrs.push(CoreInstr::MOV(dst, src));
+        desugared.push(CoreInstr::MOV(dst, src));
       }
       SurfaceInstr::XCHG(dst1, dst2) => {
-        out_instrs.push(CoreInstr::LOCK);
-        out_instrs.push(CoreInstr::XCHG(dst1, dst2));
-        out_instrs.push(CoreInstr::UNLOCK);
+        desugared.push(CoreInstr::LOCK);
+        desugared.push(CoreInstr::XCHG(dst1, dst2));
+        desugared.push(CoreInstr::UNLOCK);
       }
       SurfaceInstr::MFENCE => { 
-        out_instrs.push(CoreInstr::MFENCE);
+        desugared.push(CoreInstr::MFENCE);
       }
     }
 
   }
-  out_instrs
+  desugared
+}
+
+pub fn desugar(prog: &SurfaceProg) -> CoreProg {
+  let mut desugared: HashMap<Proc, Vec<CoreInstr>> = HashMap::new();
+
+  for (processor, instrs) in &prog.0 {
+    desugared.insert(*processor, desugar_helper(instrs)).unwrap();
+  }
+  CoreProg(desugared)
 }
