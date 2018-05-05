@@ -14,39 +14,60 @@ pub struct State {
   pub lock_owner: Option<Proc>,
 }
 
-pub struct FinalProcState {
+pub struct ProcTerminal {
   pub regs: BTreeMap<Reg, Value>,
 }
 
-pub struct FinalState {
-  pub procs: BTreeMap<Proc, FinalProcState>,
+pub struct Terminal {
+  pub procs: BTreeMap<Proc, ProcTerminal>,
   pub mem: BTreeMap<MemLoc, Value>,
 }
 
-pub enum FinalStatePredType {
-  Forbidden,
-  Required,
-}
-
 impl ProcState {
-  pub fn finalize(&self) -> Option<FinalProcState> {
+  pub fn is_final(&self) -> bool {
+    self.storebuf.is_empty()
+  }
+
+  pub fn finalize(&self) -> Option<ProcTerminal> {
     if !self.storebuf.is_empty() {
       return None;
     }
-    Some(FinalProcState {regs: self.regs.clone()})
+    Some(ProcTerminal { regs: self.regs.clone() })
   }
 }
 
 impl State {
-  pub fn finalize(&self) -> Option<FinalState> {
+  pub fn is_blocked(&self, processor: Proc) -> bool {
+    match self.lock_owner {
+      None => false,
+      Some(processor2) => processor != processor2,
+    }
+  }
+
+  pub fn is_final(&self) -> bool {
+    if self.lock_owner.is_some() {
+      return false;
+    }
+    for state in self.procs.values() {
+      if !state.is_final() {
+        return false;
+      }
+    }
+    true
+  }
+
+  pub fn finalize(&self) -> Option<Terminal> {
     if self.lock_owner.is_some() {
       return None;
     }
 
-    let mut procs: BTreeMap<Proc, FinalProcState> = BTreeMap::new();
+    let mut procs: BTreeMap<Proc, ProcTerminal> = BTreeMap::new();
     for (processor, state) in &self.procs {
       procs.insert(*processor, state.finalize()?).unwrap();
     }
-    Some(FinalState {procs: procs, mem: self.mem.clone()})
+    Some(Terminal {
+      procs: procs,
+      mem: self.mem.clone(),
+    })
   }
 }

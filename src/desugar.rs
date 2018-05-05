@@ -11,15 +11,15 @@ fn desugar_helper(instrs: &Vec<SurfaceInstr>) -> Vec<CoreInstr> {
     match *instr {
       SurfaceInstr::MOV(dst, src) => {
         desugared.push(CoreInstr::MOV(dst, src));
-      }
+      },
       SurfaceInstr::XCHG(dst1, dst2) => {
         desugared.push(CoreInstr::LOCK);
         desugared.push(CoreInstr::XCHG(dst1, dst2));
         desugared.push(CoreInstr::UNLOCK);
-      }
-      SurfaceInstr::MFENCE => { 
+      },
+      SurfaceInstr::MFENCE => {
         desugared.push(CoreInstr::MFENCE);
-      }
+      },
     }
 
   }
@@ -30,7 +30,9 @@ pub fn desugar(prog: &SurfaceProg) -> CoreProg {
   let mut desugared: BTreeMap<Proc, Vec<CoreInstr>> = BTreeMap::new();
 
   for (processor, instrs) in &prog.0 {
-    desugared.insert(*processor, desugar_helper(instrs)).unwrap();
+    desugared
+      .insert(*processor, desugar_helper(instrs))
+      .unwrap();
   }
   CoreProg(desugared)
 }
