@@ -209,7 +209,7 @@ fn unlock(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
 pub static NEXT: [fn(Proc, &CoreProg, &State) -> Option<State>; 7] =
   [mov, read, write, tau, fence, lock, unlock];
 
-pub fn run(prog: CoreProg, init: State) -> Vec<Terminal> {
+pub fn run(name: &'static str, prog: CoreProg, init: State) -> Vec<Terminal> {
   let processors: Vec<Proc> = prog.0.keys().cloned().collect();
   let mut queue: VecDeque<State> = VecDeque::new();
   let mut hashtbl: HashSet<State> = HashSet::new();
@@ -239,7 +239,8 @@ pub fn run(prog: CoreProg, init: State) -> Vec<Terminal> {
   }
 
   println!(
-    "{} states explored, {} terminal states.",
+    "[{}] {} states explored, {} terminal states.",
+    name,
     hashtbl.len(),
     terminals.len()
   );

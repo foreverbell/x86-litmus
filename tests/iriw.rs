@@ -42,6 +42,7 @@ fn iriw() {
   ]);
 
   assert!(litmus(
+    "iriw",
     &Prog(prog),
     State::new(&vec![p0, p1, p2, p3]),
     &pred,

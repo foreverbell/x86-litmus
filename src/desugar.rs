@@ -7,8 +7,8 @@ use std::vec::Vec;
 fn desugar_helper(insts: &Vec<Inst>) -> Vec<CoreInst> {
   let mut desugared = vec![];
 
-  for instr in insts.into_iter() {
-    match *instr {
+  for inst in insts.into_iter() {
+    match *inst {
       Inst::Mov(operand1, operand2) => {
         match (operand1, operand2) {
           (Operand::Imm(_), _) => {

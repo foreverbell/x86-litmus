@@ -7,7 +7,7 @@ use x86_litmus::litmus;
 use x86_litmus::state::State;
 
 #[test]
-fn sb() {
+fn amd5() {
   let x = Operand::MemLoc(MemLoc("x"));
   let y = Operand::MemLoc(MemLoc("y"));
   let eax = Operand::Reg(Reg::Eax);
@@ -15,10 +15,10 @@ fn sb() {
   let one = Operand::Imm(Value(1));
 
   let p0 = Proc(0);
-  let i0 = vec![Inst::Mov(x, one), Inst::Mov(eax, y)];
+  let i0 = vec![Inst::Mov(x, one), Inst::Mfence, Inst::Mov(eax, y)];
 
   let p1 = Proc(1);
-  let i1 = vec![Inst::Mov(y, one), Inst::Mov(ebx, x)];
+  let i1 = vec![Inst::Mov(y, one), Inst::Mfence, Inst::Mov(ebx, x)];
 
   let mut prog: BTreeMap<Proc, Vec<Inst>> = BTreeMap::new();
   prog.insert(p0, i0);
@@ -30,10 +30,10 @@ fn sb() {
   ]);
 
   assert!(litmus(
-    "sb",
+    "amd5",
     &Prog(prog),
     State::new(&vec![p0, p1]),
     &pred,
-    PredType::Allowed,
+    PredType::Forbidden,
   ));
 }

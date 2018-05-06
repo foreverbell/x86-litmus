@@ -9,13 +9,16 @@ use run::run;
 use state::State;
 
 pub fn litmus(
+  name: &'static str,
   prog: &Prog,
   init: State,
   pred: &Pred,
   pred_type: PredType,
 ) -> bool {
   let desugared = desugar(prog);
-  let terminals = run(desugared, init);
+  let terminals = run(name, desugared, init);
+
+  assert!(terminals.len() > 0);
 
   match pred_type {
     PredType::Forbidden => {
