@@ -109,7 +109,6 @@ impl Terminal {
       &Pred::MemLoc(memloc, value) => {
         value == self.mem.get(&memloc).cloned().unwrap_or_default()
       },
-      &Pred::Not(ref pred) => !self.satisfy(pred),
       &Pred::And(ref preds) => {
         for pred in preds {
           if !self.satisfy(pred) {

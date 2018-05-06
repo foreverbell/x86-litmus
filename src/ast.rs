@@ -65,6 +65,15 @@ pub struct CoreProg(pub BTreeMap<Proc, Vec<CoreInst>>);
 pub enum Pred {
   Reg(Proc, Reg, Value),
   MemLoc(MemLoc, Value),
-  Not(Box<Pred>),
   And(Vec<Pred>),
+}
+
+#[derive(Clone, Copy)]
+pub enum PredType {
+  // every terminal state should not satisfy this predicate
+  Forbidden,
+  // every terminal state should satisfy this predicate
+  Required,
+  // at least one terminal state should satisfy this predicate
+  Allowed,
 }
