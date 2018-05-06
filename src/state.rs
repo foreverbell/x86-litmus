@@ -1,4 +1,4 @@
-use ast::{Value, Proc, MemLoc, Reg};
+use ast::{Value, Proc, MemLoc, Reg, Pred};
 use std::collections::BTreeMap;
 use std::collections::VecDeque;
 
@@ -29,6 +29,14 @@ pub struct Terminal {
 }
 
 impl ProcState {
+  pub fn new() -> Self {
+    ProcState {
+      regs: BTreeMap::new(),
+      ip: Some(0),
+      storebuf: VecDeque::new(),
+    }
+  }
+
   pub fn is_final(&self) -> bool {
     self.storebuf.is_empty() && self.ip.is_none()
   }
@@ -42,6 +50,20 @@ impl ProcState {
 }
 
 impl State {
+  pub fn new(processors: &Vec<Proc>) -> Self {
+    let mut procs = BTreeMap::new();
+
+    for processor in processors {
+      procs.insert(*processor, ProcState::new());
+    }
+
+    State {
+      procs: procs,
+      mem: BTreeMap::new(),
+      lock_owner: None,
+    }
+  }
+
   pub fn is_blocked(&self, processor: Proc) -> bool {
     match self.lock_owner {
       None => false,
@@ -68,7 +90,7 @@ impl State {
 
     let mut procs: BTreeMap<Proc, ProcTerminal> = BTreeMap::new();
     for (processor, state) in &self.procs {
-      procs.insert(*processor, state.finalize().unwrap()).unwrap();
+      procs.insert(*processor, state.finalize().unwrap());
     }
     Some(Terminal {
       procs: procs,
@@ -77,26 +99,19 @@ impl State {
   }
 }
 
-pub enum TerminalPred {
-  Reg(Proc, Reg, Value),
-  MemLoc(MemLoc, Value),
-  Not(Box<TerminalPred>),
-  And(Vec<TerminalPred>),
-}
-
 impl Terminal {
-  pub fn satisfy(&self, pred: &TerminalPred) -> bool {
+  pub fn satisfy(&self, pred: &Pred) -> bool {
     match pred {
-      &TerminalPred::Reg(processor, reg, value) => {
+      &Pred::Reg(processor, reg, value) => {
         let proc_terminal: ProcTerminal =
           self.procs.get(&processor).cloned().unwrap_or_default();
         value == proc_terminal.regs.get(&reg).cloned().unwrap_or_default()
       },
-      &TerminalPred::MemLoc(memloc, value) => {
+      &Pred::MemLoc(memloc, value) => {
         value == self.mem.get(&memloc).cloned().unwrap_or_default()
       },
-      &TerminalPred::Not(ref pred) => !self.satisfy(pred),
-      &TerminalPred::And(ref preds) => {
+      &Pred::Not(ref pred) => !self.satisfy(pred),
+      &Pred::And(ref preds) => {
         for pred in preds {
           if !self.satisfy(pred) {
             return false;

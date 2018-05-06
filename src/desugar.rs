@@ -1,15 +1,15 @@
 use ast::{Proc, Operand};
-use ast::{SurfaceInst, CoreInst};
-use ast::{SurfaceProg, CoreProg};
+use ast::{Inst, CoreInst};
+use ast::{Prog, CoreProg};
 use std::collections::BTreeMap;
 use std::vec::Vec;
 
-fn desugar_helper(insts: &Vec<SurfaceInst>) -> Vec<CoreInst> {
+fn desugar_helper(insts: &Vec<Inst>) -> Vec<CoreInst> {
   let mut desugared = vec![];
 
   for instr in insts.into_iter() {
     match *instr {
-      SurfaceInst::Mov(operand1, operand2) => {
+      Inst::Mov(operand1, operand2) => {
         match (operand1, operand2) {
           (Operand::Imm(_), _) => {
             panic!("dest operand cannot be immediate value");
@@ -27,14 +27,14 @@ fn desugar_helper(insts: &Vec<SurfaceInst>) -> Vec<CoreInst> {
             desugared.push(CoreInst::Read(reg, memloc));
           },
           (Operand::MemLoc(memloc), Operand::Reg(reg)) => {
-            desugared.push(CoreInst::Write(memloc, reg));
+            desugared.push(CoreInst::Write1(memloc, reg));
           },
-          (Operand::MemLoc(_), Operand::Imm(_)) => {
-            unimplemented!();
+          (Operand::MemLoc(memloc), Operand::Imm(imm)) => {
+            desugared.push(CoreInst::Write2(memloc, imm));
           },
         }
       },
-      SurfaceInst::Xchg(operand1, operand2) => {
+      Inst::Xchg(operand1, operand2) => {
         desugared.push(CoreInst::Lock);
         match (operand1, operand2) {
           (Operand::Reg(reg), Operand::MemLoc(memloc)) => {
@@ -47,7 +47,7 @@ fn desugar_helper(insts: &Vec<SurfaceInst>) -> Vec<CoreInst> {
         }
         desugared.push(CoreInst::Unlock);
       },
-      SurfaceInst::Mfence => {
+      Inst::Mfence => {
         desugared.push(CoreInst::Mfence);
       },
     }
@@ -55,11 +55,11 @@ fn desugar_helper(insts: &Vec<SurfaceInst>) -> Vec<CoreInst> {
   desugared
 }
 
-pub fn desugar(prog: &SurfaceProg) -> CoreProg {
+pub fn desugar(prog: &Prog) -> CoreProg {
   let mut desugared: BTreeMap<Proc, Vec<CoreInst>> = BTreeMap::new();
 
   for (processor, insts) in &prog.0 {
-    desugared.insert(*processor, desugar_helper(insts)).unwrap();
+    desugared.insert(*processor, desugar_helper(insts));
   }
   CoreProg(desugared)
 }

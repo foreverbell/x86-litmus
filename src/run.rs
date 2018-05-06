@@ -102,8 +102,20 @@ fn write(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
   let (proc_prog, proc_state, proc_ip) = extract(processor, prog, state)?;
 
   match proc_prog[proc_ip] {
-    CoreInst::Write(memloc, reg) => {
+    CoreInst::Write1(memloc, reg) => {
       let value = proc_state.regs.get(&reg).cloned().unwrap_or_default();
+      let mut nstate = state.clone();
+      increase_ip(processor, proc_prog.len(), &mut nstate);
+
+      nstate
+        .procs
+        .get_mut(&processor)
+        .unwrap()
+        .storebuf
+        .push_back((memloc, value));
+      Some(nstate)
+    },
+    CoreInst::Write2(memloc, value) => {
       let mut nstate = state.clone();
       increase_ip(processor, proc_prog.len(), &mut nstate);
 
@@ -200,7 +212,7 @@ pub fn run(prog: CoreProg, init: State) -> Vec<Terminal> {
   let processors: Vec<Proc> = prog.0.keys().cloned().collect();
   let mut queue: VecDeque<State> = VecDeque::new();
   let mut hashtbl: HashSet<State> = HashSet::new();
-  let mut result: Vec<Terminal> = Vec::new();
+  let mut terminals: Vec<Terminal> = Vec::new();
 
   queue.push_back(init.clone());
   hashtbl.insert(init);
@@ -209,7 +221,7 @@ pub fn run(prog: CoreProg, init: State) -> Vec<Terminal> {
     let front = queue.pop_front().unwrap();
 
     if front.is_final() {
-      result.push(front.finalize().unwrap());
+      terminals.push(front.finalize().unwrap());
       continue;
     }
     for processor in &processors {
@@ -224,5 +236,12 @@ pub fn run(prog: CoreProg, init: State) -> Vec<Terminal> {
       }
     }
   }
-  result
+
+  println!(
+    "{} states explored, {} terminal states.",
+    hashtbl.len(),
+    terminals.len()
+  );
+
+  terminals
 }

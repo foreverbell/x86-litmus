@@ -31,7 +31,7 @@ pub enum Operand {
 }
 
 #[derive(Clone, Copy)]
-pub enum SurfaceInst {
+pub enum Inst {
   Mov(Operand, Operand),
   Xchg(Operand, Operand),
   Mfence,
@@ -42,7 +42,9 @@ pub enum CoreInst {
   // read from memory to register
   Read(Reg, MemLoc),
   // write to memory from register
-  Write(MemLoc, Reg),
+  Write1(MemLoc, Reg),
+  // write to memory with an immediate value
+  Write2(MemLoc, Value),
   // move from register to register
   Mov1(Reg, Reg),
   // move immediate value to register
@@ -57,5 +59,12 @@ pub enum CoreInst {
   Unlock,
 }
 
-pub struct SurfaceProg(pub BTreeMap<Proc, Vec<SurfaceInst>>);
+pub struct Prog(pub BTreeMap<Proc, Vec<Inst>>);
 pub struct CoreProg(pub BTreeMap<Proc, Vec<CoreInst>>);
+
+pub enum Pred {
+  Reg(Proc, Reg, Value),
+  MemLoc(MemLoc, Value),
+  Not(Box<Pred>),
+  And(Vec<Pred>),
+}

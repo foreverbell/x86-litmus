@@ -1,11 +1,21 @@
-#[allow(dead_code)]
-mod ast;
-
-#[allow(dead_code)]
+pub mod ast;
+pub mod state;
 mod desugar;
-
-#[allow(dead_code)]
 mod run;
 
-#[allow(dead_code)]
-mod state;
+use ast::{Prog, Pred};
+use desugar::desugar;
+use run::run;
+use state::State;
+
+pub fn litmus(prog: &Prog, init: State, pred: &Pred) -> bool {
+  let desugared = desugar(prog);
+  let terminals = run(desugared, init);
+
+  for terminal in &terminals {
+    if !terminal.satisfy(pred) {
+      return false;
+    }
+  }
+  true
+}
