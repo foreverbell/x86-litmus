@@ -5,7 +5,9 @@ use std::collections::VecDeque;
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct ProcState {
   pub regs: BTreeMap<Reg, Value>,
-  pub ip: Option<usize>, // None if program is terminated.
+  // None if program is terminated (but may still have uncommitted writes in
+  // storebuf).
+  pub ip: Option<usize>,
   pub storebuf: VecDeque<(MemLoc, Value)>,
 }
 
@@ -16,6 +18,7 @@ pub struct State {
   pub lock_owner: Option<Proc>,
 }
 
+#[derive(Clone, Default)]
 pub struct ProcTerminal {
   pub regs: BTreeMap<Reg, Value>,
 }
@@ -23,13 +26,6 @@ pub struct ProcTerminal {
 pub struct Terminal {
   pub procs: BTreeMap<Proc, ProcTerminal>,
   pub mem: BTreeMap<MemLoc, Value>,
-}
-
-pub enum TerminalPred {
-  Reg(Proc, Reg, Value),
-  MemLoc(MemLoc, Value),
-  Not(Box<TerminalPred>),
-  And(Vec<TerminalPred>),
 }
 
 impl ProcState {
@@ -78,5 +74,36 @@ impl State {
       procs: procs,
       mem: self.mem.clone(),
     })
+  }
+}
+
+pub enum TerminalPred {
+  Reg(Proc, Reg, Value),
+  MemLoc(MemLoc, Value),
+  Not(Box<TerminalPred>),
+  And(Vec<TerminalPred>),
+}
+
+impl Terminal {
+  pub fn satisfy(&self, pred: &TerminalPred) -> bool {
+    match pred {
+      &TerminalPred::Reg(processor, reg, value) => {
+        let proc_terminal: ProcTerminal =
+          self.procs.get(&processor).cloned().unwrap_or_default();
+        value == proc_terminal.regs.get(&reg).cloned().unwrap_or_default()
+      },
+      &TerminalPred::MemLoc(memloc, value) => {
+        value == self.mem.get(&memloc).cloned().unwrap_or_default()
+      },
+      &TerminalPred::Not(ref pred) => !self.satisfy(pred),
+      &TerminalPred::And(ref preds) => {
+        for pred in preds {
+          if !self.satisfy(pred) {
+            return false;
+          }
+        }
+        true
+      },
+    }
   }
 }
