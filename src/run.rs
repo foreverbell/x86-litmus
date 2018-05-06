@@ -49,24 +49,24 @@ fn mov(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
   match proc_prog[proc_ip] {
     CoreInst::Mov1(reg1, reg2) => {
       let value = proc_state.regs.get(&reg2).cloned().unwrap_or_default();
-      let mut ostate = state.clone();
-      increase_ip(processor, proc_prog.len(), &mut ostate);
+      let mut nstate = state.clone();
+      increase_ip(processor, proc_prog.len(), &mut nstate);
 
-      ostate.procs.get_mut(&processor).unwrap().regs.insert(
+      nstate.procs.get_mut(&processor).unwrap().regs.insert(
         reg1,
         value,
       );
-      Some(ostate)
+      Some(nstate)
     },
     CoreInst::Mov2(reg, value) => {
-      let mut ostate = state.clone();
-      increase_ip(processor, proc_prog.len(), &mut ostate);
+      let mut nstate = state.clone();
+      increase_ip(processor, proc_prog.len(), &mut nstate);
 
-      ostate.procs.get_mut(&processor).unwrap().regs.insert(
+      nstate.procs.get_mut(&processor).unwrap().regs.insert(
         reg,
         value,
       );
-      Some(ostate)
+      Some(nstate)
     },
     _ => None,
   }
@@ -85,14 +85,14 @@ fn read(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
         Some(value) => value,
         None => state.mem.get(&memloc).cloned().unwrap_or_default(),
       };
-      let mut ostate = state.clone();
-      increase_ip(processor, proc_prog.len(), &mut ostate);
+      let mut nstate = state.clone();
+      increase_ip(processor, proc_prog.len(), &mut nstate);
 
-      ostate.procs.get_mut(&processor).unwrap().regs.insert(
+      nstate.procs.get_mut(&processor).unwrap().regs.insert(
         reg,
         value,
       );
-      Some(ostate)
+      Some(nstate)
     },
     _ => None,
   }
@@ -104,37 +104,37 @@ fn write(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
   match proc_prog[proc_ip] {
     CoreInst::Write(memloc, reg) => {
       let value = proc_state.regs.get(&reg).cloned().unwrap_or_default();
-      let mut ostate = state.clone();
-      increase_ip(processor, proc_prog.len(), &mut ostate);
+      let mut nstate = state.clone();
+      increase_ip(processor, proc_prog.len(), &mut nstate);
 
-      ostate
+      nstate
         .procs
         .get_mut(&processor)
         .unwrap()
         .storebuf
         .push_back((memloc, value));
-      Some(ostate)
+      Some(nstate)
     },
     _ => None,
   }
 }
 
-fn flush_one(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
+fn tau(processor: Proc, _: &CoreProg, state: &State) -> Option<State> {
   if state.is_blocked(processor) {
     return None;
   }
 
-  let mut ostate = state.clone();
+  let mut nstate = state.clone();
   {
-    let proc_state = ostate.procs.get_mut(&processor)?;
+    let proc_state = nstate.procs.get_mut(&processor)?;
 
     if let Some((memloc, value)) = proc_state.storebuf.pop_front() {
-      ostate.mem.insert(memloc, value);
+      nstate.mem.insert(memloc, value);
     } else {
       return None;
     }
   }
-  Some(ostate)
+  Some(nstate)
 }
 
 fn fence(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
@@ -143,10 +143,10 @@ fn fence(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
   match proc_prog[proc_ip] {
     CoreInst::Mfence => {
       if proc_state.storebuf.is_empty() {
-        let mut ostate = state.clone();
-        increase_ip(processor, proc_prog.len(), &mut ostate);
+        let mut nstate = state.clone();
+        increase_ip(processor, proc_prog.len(), &mut nstate);
 
-        Some(ostate)
+        Some(nstate)
       } else {
         None
       }
@@ -156,16 +156,16 @@ fn fence(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
 }
 
 fn lock(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
-  let (proc_prog, proc_state, proc_ip) = extract(processor, prog, state)?;
+  let (proc_prog, _, proc_ip) = extract(processor, prog, state)?;
 
   match proc_prog[proc_ip] {
     CoreInst::Lock => {
       if state.lock_owner.is_none() {
-        let mut ostate = state.clone();
-        increase_ip(processor, proc_prog.len(), &mut ostate);
+        let mut nstate = state.clone();
+        increase_ip(processor, proc_prog.len(), &mut nstate);
 
-        ostate.lock_owner = Some(processor);
-        Some(ostate)
+        nstate.lock_owner = Some(processor);
+        Some(nstate)
       } else {
         None
       }
@@ -175,16 +175,16 @@ fn lock(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
 }
 
 fn unlock(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
-  let (proc_prog, proc_state, proc_ip) = extract(processor, prog, state)?;
+  let (proc_prog, _, proc_ip) = extract(processor, prog, state)?;
 
   match proc_prog[proc_ip] {
-    CoreInst::Lock => {
+    CoreInst::Unlock => {
       if state.lock_owner == Some(processor) {
-        let mut ostate = state.clone();
-        increase_ip(processor, proc_prog.len(), &mut ostate);
+        let mut nstate = state.clone();
+        increase_ip(processor, proc_prog.len(), &mut nstate);
 
-        ostate.lock_owner = None;
-        Some(ostate)
+        nstate.lock_owner = None;
+        Some(nstate)
       } else {
         None
       }
@@ -193,6 +193,36 @@ fn unlock(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
   }
 }
 
-pub fn run(processor: Proc, prog: CoreProg, init: State) -> Vec<Terminal> {
-  vec![]
+pub static NEXT: [fn(Proc, &CoreProg, &State) -> Option<State>; 7] =
+  [mov, read, write, tau, fence, lock, unlock];
+
+pub fn run(prog: CoreProg, init: State) -> Vec<Terminal> {
+  let processors: Vec<Proc> = prog.0.keys().cloned().collect();
+  let mut queue: VecDeque<State> = VecDeque::new();
+  let mut hashtbl: HashSet<State> = HashSet::new();
+  let mut result: Vec<Terminal> = Vec::new();
+
+  queue.push_back(init.clone());
+  hashtbl.insert(init);
+
+  while !queue.is_empty() {
+    let front = queue.pop_front().unwrap();
+
+    if front.is_final() {
+      result.push(front.finalize().unwrap());
+      continue;
+    }
+    for processor in &processors {
+      for next in NEXT.into_iter() {
+        if let Some(nstate) = next(*processor, &prog, &front) {
+          if hashtbl.contains(&nstate) {
+            continue;
+          }
+          queue.push_back(nstate.clone());
+          hashtbl.insert(nstate);
+        }
+      }
+    }
+  }
+  result
 }

@@ -29,7 +29,7 @@ fn desugar_helper(insts: &Vec<SurfaceInst>) -> Vec<CoreInst> {
           (Operand::MemLoc(memloc), Operand::Reg(reg)) => {
             desugared.push(CoreInst::Write(memloc, reg));
           },
-          (Operand::MemLoc(memloc), Operand::Imm(imm)) => {
+          (Operand::MemLoc(_), Operand::Imm(_)) => {
             unimplemented!();
           },
         }
