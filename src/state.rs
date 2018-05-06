@@ -1,11 +1,12 @@
 use ast::{Value, Proc, MemLoc, Reg};
 use std::collections::BTreeMap;
+use std::collections::VecDeque;
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct ProcState {
   pub regs: BTreeMap<Reg, Value>,
-  pub ip: Option<usize>,  // None if program is terminated.
-  pub storebuf: BTreeMap<MemLoc, Value>,
+  pub ip: Option<usize>, // None if program is terminated.
+  pub storebuf: VecDeque<(MemLoc, Value)>,
 }
 
 #[derive(PartialEq, Eq, Hash, Clone)]

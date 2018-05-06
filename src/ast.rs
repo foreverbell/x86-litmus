@@ -39,14 +39,22 @@ pub enum SurfaceInst {
 
 #[derive(Clone, Copy)]
 pub enum CoreInst {
-  Read(Reg, MemLoc),   // read from memory to register
-  Write(MemLoc, Reg),  // write to memory from register
-  Mov1(Reg, Reg),      // move from register to register
-  Mov2(Reg, Value),    // move immediate value to register
-  Xchg(Reg, MemLoc),   // exchange value between register and memory
-  Mfence,              // memory fence
-  Lock,                // lock bus
-  Unlock,              // unlock bus
+  // read from memory to register
+  Read(Reg, MemLoc),
+  // write to memory from register
+  Write(MemLoc, Reg),
+  // move from register to register
+  Mov1(Reg, Reg),
+  // move immediate value to register
+  Mov2(Reg, Value),
+  // exchange value between register and memory
+  Xchg(Reg, MemLoc),
+  // memory fence
+  Mfence,
+  // lock bus
+  Lock,
+  // unlock bus
+  Unlock,
 }
 
 pub struct SurfaceProg(pub BTreeMap<Proc, Vec<SurfaceInst>>);

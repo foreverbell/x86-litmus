@@ -35,19 +35,17 @@ fn desugar_helper(insts: &Vec<SurfaceInst>) -> Vec<CoreInst> {
         }
       },
       SurfaceInst::Xchg(operand1, operand2) => {
+        desugared.push(CoreInst::Lock);
         match (operand1, operand2) {
           (Operand::Reg(reg), Operand::MemLoc(memloc)) => {
-            desugared.push(CoreInst::Lock);
             desugared.push(CoreInst::Xchg(reg, memloc));
-            desugared.push(CoreInst::Unlock);
           },
           (Operand::MemLoc(memloc), Operand::Reg(reg)) => {
-            desugared.push(CoreInst::Lock);
             desugared.push(CoreInst::Xchg(reg, memloc));
-            desugared.push(CoreInst::Unlock);
           },
           (_, _) => panic!("unimplemented"),
         }
+        desugared.push(CoreInst::Unlock);
       },
       SurfaceInst::Mfence => {
         desugared.push(CoreInst::Mfence);
