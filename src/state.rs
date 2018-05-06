@@ -103,8 +103,7 @@ impl Terminal {
   pub fn satisfy(&self, pred: &Pred) -> bool {
     match pred {
       &Pred::Reg(processor, reg, value) => {
-        let proc_terminal: ProcTerminal =
-          self.procs.get(&processor).cloned().unwrap_or_default();
+        let proc_terminal: &ProcTerminal = self.procs.get(&processor).unwrap();
         value == proc_terminal.regs.get(&reg).cloned().unwrap_or_default()
       },
       &Pred::MemLoc(memloc, value) => {

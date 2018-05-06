@@ -205,6 +205,7 @@ fn unlock(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
   }
 }
 
+// TODO(foreverbell): xchg.
 pub static NEXT: [fn(Proc, &CoreProg, &State) -> Option<State>; 7] =
   [mov, read, write, tau, fence, lock, unlock];
 
