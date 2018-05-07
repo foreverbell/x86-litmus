@@ -6,7 +6,7 @@ For x86-TSO, see [x86-TSO: A Rigorous and Usable Programmer’s Model for x86 Mu
 
 ## Example Litmus
 
-See [sb.rs](tests/sb.rs), corresponding to `sb` example in above paper, which states two concurrent CPUs performing these two snippets,
+See [sb.rs](tests/sb.rs), corresponding to `sb` example in above paper, which states two concurrent processors performing these two snippets,
 
 ```asm
 mov [x], $1
@@ -17,3 +17,12 @@ mov ebx, [x]
 ```
 
 should allow eax and ebx on each processor both equal to 0 due to the store buffer on x86 architecture.
+
+Executing `cargo test --test sb -- --nocapture` produces the following result.
+
+```text
+running 1 test
+[sb] 34 states explored, 4 terminal states.
+test sb ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+```

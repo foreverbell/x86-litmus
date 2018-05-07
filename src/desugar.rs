@@ -74,7 +74,7 @@ fn desugar_helper(insts: &Vec<Inst>) -> Vec<CoreInst> {
   desugared
 }
 
-// Desugar Prog into CoreProg, also does some typechecking.
+// Desugars Prog into CoreProg, also does some typechecking.
 pub fn desugar(prog: &Prog) -> CoreProg {
   let mut desugared: BTreeMap<Proc, Vec<CoreInst>> = BTreeMap::new();
 
