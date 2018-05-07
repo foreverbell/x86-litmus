@@ -1,5 +1,5 @@
 use ast::{CoreProg, CoreInst};
-use ast::{Proc, Value, MemLoc};
+use ast::{Proc, Value, MemLoc, Reg};
 use state::{State, ProcState, Terminal};
 use std::collections::HashSet;
 use std::collections::VecDeque;
@@ -46,28 +46,26 @@ fn increase_ip(processor: Proc, prog_size: usize, state: &mut State) {
 fn mov(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
   let (proc_prog, proc_state, proc_ip) = extract(processor, prog, state)?;
 
+  // mov value into register reg.
+  let mov_helper = |reg: Reg, value: Value| -> Option<State> {
+    let mut nstate = state.clone();
+    increase_ip(processor, proc_prog.len(), &mut nstate);
+
+    nstate.procs.get_mut(&processor).unwrap().regs.insert(
+      reg,
+      value,
+    );
+    Some(nstate)
+  };
+
   match proc_prog[proc_ip] {
     CoreInst::Mov1(reg1, reg2) => {
-      let value = proc_state.regs.get(&reg2).cloned().unwrap_or_default();
-      let mut nstate = state.clone();
-      increase_ip(processor, proc_prog.len(), &mut nstate);
-
-      nstate.procs.get_mut(&processor).unwrap().regs.insert(
+      mov_helper(
         reg1,
-        value,
-      );
-      Some(nstate)
+        proc_state.regs.get(&reg2).cloned().unwrap_or_default(),
+      )
     },
-    CoreInst::Mov2(reg, value) => {
-      let mut nstate = state.clone();
-      increase_ip(processor, proc_prog.len(), &mut nstate);
-
-      nstate.procs.get_mut(&processor).unwrap().regs.insert(
-        reg,
-        value,
-      );
-      Some(nstate)
-    },
+    CoreInst::Mov2(reg, value) => mov_helper(reg, value),
     _ => None,
   }
 }
@@ -101,32 +99,28 @@ fn read(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
 fn write(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
   let (proc_prog, proc_state, proc_ip) = extract(processor, prog, state)?;
 
+  // write value to memloc.
+  let write_helper = |memloc: MemLoc, value: Value| -> Option<State> {
+    let mut nstate = state.clone();
+    increase_ip(processor, proc_prog.len(), &mut nstate);
+
+    nstate
+      .procs
+      .get_mut(&processor)
+      .unwrap()
+      .storebuf
+      .push_back((memloc, value));
+    Some(nstate)
+  };
+
   match proc_prog[proc_ip] {
     CoreInst::Write1(memloc, reg) => {
-      let value = proc_state.regs.get(&reg).cloned().unwrap_or_default();
-      let mut nstate = state.clone();
-      increase_ip(processor, proc_prog.len(), &mut nstate);
-
-      nstate
-        .procs
-        .get_mut(&processor)
-        .unwrap()
-        .storebuf
-        .push_back((memloc, value));
-      Some(nstate)
+      write_helper(
+        memloc,
+        proc_state.regs.get(&reg).cloned().unwrap_or_default(),
+      )
     },
-    CoreInst::Write2(memloc, value) => {
-      let mut nstate = state.clone();
-      increase_ip(processor, proc_prog.len(), &mut nstate);
-
-      nstate
-        .procs
-        .get_mut(&processor)
-        .unwrap()
-        .storebuf
-        .push_back((memloc, value));
-      Some(nstate)
-    },
+    CoreInst::Write2(memloc, value) => write_helper(memloc, value),
     _ => None,
   }
 }
