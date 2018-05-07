@@ -1,11 +1,30 @@
-use ast::{Proc, Operand};
+use ast::{Proc, Operand, Reg};
 use ast::{Inst, CoreInst};
 use ast::{Prog, CoreProg};
 use std::collections::BTreeMap;
 use std::vec::Vec;
 
+fn is_internal_register(operand: Operand) -> bool {
+  match operand {
+    Operand::Reg(Reg::Internal) => true,
+    _ => false,
+  }
+}
+
 fn desugar_helper(insts: &Vec<Inst>) -> Vec<CoreInst> {
   let mut desugared = vec![];
+
+  for inst in insts.into_iter() {
+    match *inst {
+      Inst::Mov(operand1, operand2) |
+      Inst::Xchg(operand1, operand2) => {
+        if is_internal_register(operand1) || is_internal_register(operand2) {
+          panic!("cannot use internal register");
+        }
+      },
+      Inst::Mfence => (),
+    }
+  }
 
   for inst in insts.into_iter() {
     match *inst {
@@ -35,17 +54,17 @@ fn desugar_helper(insts: &Vec<Inst>) -> Vec<CoreInst> {
         }
       },
       Inst::Xchg(operand1, operand2) => {
-        desugared.push(CoreInst::Lock);
         match (operand1, operand2) {
-          (Operand::Reg(reg), Operand::MemLoc(memloc)) => {
-            desugared.push(CoreInst::Xchg(reg, memloc));
-          },
+          (Operand::Reg(reg), Operand::MemLoc(memloc)) |
           (Operand::MemLoc(memloc), Operand::Reg(reg)) => {
-            desugared.push(CoreInst::Xchg(reg, memloc));
+            desugared.push(CoreInst::Lock);
+            desugared.push(CoreInst::Mov1(Reg::Internal, reg));
+            desugared.push(CoreInst::Read(reg, memloc));
+            desugared.push(CoreInst::Write1(memloc, Reg::Internal));
+            desugared.push(CoreInst::Unlock);
           },
           (_, _) => panic!("unimplemented"),
         }
-        desugared.push(CoreInst::Unlock);
       },
       Inst::Mfence => {
         desugared.push(CoreInst::Mfence);
@@ -55,6 +74,7 @@ fn desugar_helper(insts: &Vec<Inst>) -> Vec<CoreInst> {
   desugared
 }
 
+// Desugar Prog into CoreProg, also does some typechecking.
 pub fn desugar(prog: &Prog) -> CoreProg {
   let mut desugared: BTreeMap<Proc, Vec<CoreInst>> = BTreeMap::new();
 

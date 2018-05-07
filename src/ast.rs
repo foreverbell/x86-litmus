@@ -21,6 +21,10 @@ pub enum Reg {
   Ebx,
   Ecx,
   Edx,
+
+  // internal register, should not be used by user, only used in xchg
+  // instruction.
+  Internal,
 }
 
 #[derive(Clone, Copy)]
@@ -39,23 +43,21 @@ pub enum Inst {
 
 #[derive(Clone, Copy)]
 pub enum CoreInst {
-  // read from memory to register
+  // read from memory to register.
   Read(Reg, MemLoc),
-  // write to memory from register
+  // write to memory from register.
   Write1(MemLoc, Reg),
-  // write to memory with an immediate value
+  // write to memory with an immediate value.
   Write2(MemLoc, Value),
-  // move from register to register
+  // move from register to register.
   Mov1(Reg, Reg),
-  // move immediate value to register
+  // move immediate value to register.
   Mov2(Reg, Value),
-  // exchange value between register and memory
-  Xchg(Reg, MemLoc),
-  // memory fence
+  // memory fence.
   Mfence,
-  // lock bus
+  // lock bus.
   Lock,
-  // unlock bus
+  // unlock bus.
   Unlock,
 }
 
@@ -70,10 +72,10 @@ pub enum Pred {
 
 #[derive(Clone, Copy)]
 pub enum PredType {
-  // every terminal state should not satisfy this predicate
+  // every terminal state should not satisfy this predicate.
   Forbidden,
-  // every terminal state should satisfy this predicate
+  // every terminal state should satisfy this predicate.
   Required,
-  // at least one terminal state should satisfy this predicate
+  // at least one terminal state should satisfy this predicate.
   Allowed,
 }

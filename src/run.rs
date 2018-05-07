@@ -181,16 +181,20 @@ fn lock(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
 }
 
 fn unlock(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
-  let (proc_prog, _, proc_ip) = extract(processor, prog, state)?;
+  let (proc_prog, proc_state, proc_ip) = extract(processor, prog, state)?;
 
   match proc_prog[proc_ip] {
     CoreInst::Unlock => {
       if state.lock_owner == Some(processor) {
-        let mut nstate = state.clone();
-        increase_ip(processor, proc_prog.len(), &mut nstate);
+        if proc_state.storebuf.is_empty() {
+          let mut nstate = state.clone();
+          increase_ip(processor, proc_prog.len(), &mut nstate);
 
-        nstate.lock_owner = None;
-        Some(nstate)
+          nstate.lock_owner = None;
+          Some(nstate)
+        } else {
+          None
+        }
       } else {
         None
       }
@@ -199,7 +203,6 @@ fn unlock(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
   }
 }
 
-// TODO(foreverbell): xchg.
 pub static NEXT: [fn(Proc, &CoreProg, &State) -> Option<State>; 7] =
   [mov, read, write, tau, fence, lock, unlock];
 
