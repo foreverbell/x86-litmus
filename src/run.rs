@@ -16,7 +16,7 @@ fn extract<'a, 'b: 'a>(
   Some((proc_prog, proc_state, proc_ip))
 }
 
-fn find_lastest_write(
+fn find_latest_write(
   storebuf: &VecDeque<(MemLoc, Value)>,
   memloc: MemLoc,
 ) -> Option<Value> {
@@ -79,7 +79,7 @@ fn read(processor: Proc, prog: &CoreProg, state: &State) -> Option<State> {
         return None;
       }
 
-      let value = match find_lastest_write(&proc_state.storebuf, memloc) {
+      let value = match find_latest_write(&proc_state.storebuf, memloc) {
         Some(value) => value,
         None => state.mem.get(&memloc).cloned().unwrap_or_default(),
       };
